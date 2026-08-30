@@ -30,6 +30,103 @@ function validarTexto(valor) {
 
 
 /* =========================================
+   AEROPORTOS CONHECIDOS
+
+   Evita ambiguidades como "Congonhas",
+   que também é o nome de uma cidade em MG.
+========================================= */
+
+const AEROPORTOS_CONHECIDOS = [
+  {
+    termos: [
+      'aeroporto de congonhas',
+      'aeroporto congonhas',
+      'congonhas cgh',
+      'cgh'
+    ],
+    coordenadas: [-46.6566, -23.6261],
+    nome: 'Aeroporto de São Paulo/Congonhas (CGH), São Paulo - SP'
+  },
+  {
+    termos: [
+      'aeroporto de guarulhos',
+      'aeroporto guarulhos',
+      'aeroporto internacional de sao paulo',
+      'guarulhos gru',
+      'gru'
+    ],
+    coordenadas: [-46.4731, -23.4356],
+    nome: 'Aeroporto Internacional de São Paulo/Guarulhos (GRU), Guarulhos - SP'
+  },
+  {
+    termos: [
+      'aeroporto do galeao',
+      'aeroporto galeao',
+      'galeao gig',
+      'gig'
+    ],
+    coordenadas: [-43.2505, -22.8090],
+    nome: 'Aeroporto Internacional do Rio de Janeiro/Galeão (GIG), Rio de Janeiro - RJ'
+  },
+  {
+    termos: [
+      'aeroporto santos dumont',
+      'santos dumont sdu',
+      'sdu'
+    ],
+    coordenadas: [-43.1631, -22.9105],
+    nome: 'Aeroporto Santos Dumont (SDU), Rio de Janeiro - RJ'
+  },
+  {
+    termos: [
+      'aeroporto de brasilia',
+      'aeroporto brasilia',
+      'brasilia bsb',
+      'bsb'
+    ],
+    coordenadas: [-47.9186, -15.8697],
+    nome: 'Aeroporto Internacional de Brasília (BSB), Brasília - DF'
+  },
+  {
+    termos: [
+      'aeroporto salgado filho',
+      'aeroporto de porto alegre',
+      'porto alegre poa',
+      'poa'
+    ],
+    coordenadas: [-51.1754, -29.9944],
+    nome: 'Aeroporto Internacional Salgado Filho (POA), Porto Alegre - RS'
+  }
+];
+
+
+function normalizarBusca(texto) {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+
+function localizarAeroportoConhecido(texto) {
+  const busca = normalizarBusca(texto);
+  const palavras = new Set(busca.split(' '));
+
+  return AEROPORTOS_CONHECIDOS.find((aeroporto) =>
+    aeroporto.termos.some((termo) => {
+      if (termo.length === 3) {
+        return palavras.has(termo);
+      }
+
+      return busca.includes(termo);
+    })
+  );
+}
+
+
+/* =========================================
    GEOCODIFICAR DESTINO
 
    O destino é um endereço conhecido do site.
@@ -141,6 +238,27 @@ async function geocodificarDestino(texto) {
 ========================================= */
 
 async function geocodificarOrigem(texto) {
+
+  const aeroportoConhecido =
+    localizarAeroportoConhecido(texto);
+
+
+  if (aeroportoConhecido) {
+
+    console.log(
+      'Origem reconhecida:',
+      aeroportoConhecido.nome
+    );
+
+
+    return {
+      coordenadas:
+        aeroportoConhecido.coordenadas,
+      nome:
+        aeroportoConhecido.nome
+    };
+
+  }
 
   const url =
     new URL(
