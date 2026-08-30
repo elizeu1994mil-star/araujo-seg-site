@@ -30,60 +30,6 @@ function validarTexto(valor) {
 
 
 /* =========================================
-   DISTÂNCIA EM LINHA RETA
-   Usada apenas para escolher o resultado
-   geográfico mais próximo do destino.
-========================================= */
-
-function distanciaEntrePontos(coord1, coord2) {
-
-  const lon1 = coord1[0];
-  const lat1 = coord1[1];
-
-  const lon2 = coord2[0];
-  const lat2 = coord2[1];
-
-  const R = 6371;
-
-  const dLat =
-    (lat2 - lat1) *
-    Math.PI / 180;
-
-  const dLon =
-    (lon2 - lon1) *
-    Math.PI / 180;
-
-
-  const a =
-    Math.sin(dLat / 2) *
-    Math.sin(dLat / 2) +
-
-    Math.cos(
-      lat1 * Math.PI / 180
-    ) *
-
-    Math.cos(
-      lat2 * Math.PI / 180
-    ) *
-
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
-
-
-  const c =
-    2 *
-    Math.atan2(
-      Math.sqrt(a),
-      Math.sqrt(1 - a)
-    );
-
-
-  return R * c;
-
-}
-
-
-/* =========================================
    GEOCODIFICAR DESTINO
 
    O destino é um endereço conhecido do site.
@@ -190,14 +136,11 @@ async function geocodificarDestino(texto) {
 /* =========================================
    GEOCODIFICAR ORIGEM
 
-   Busca vários resultados e escolhe
-   o mais próximo do destino.
+   Usa o resultado mais relevante para o
+   texto informado pelo visitante.
 ========================================= */
 
-async function geocodificarOrigem(
-  texto,
-  destinoCoords
-) {
+async function geocodificarOrigem(texto) {
 
   const url =
     new URL(
@@ -217,15 +160,9 @@ async function geocodificarOrigem(
   );
 
 
-  /*
-  Busca mais resultados.
-  Isso evita pegar automaticamente
-  uma cidade distante com nome parecido.
-  */
-
   url.searchParams.set(
     'size',
-    '10'
+    '1'
   );
 
 
@@ -233,24 +170,6 @@ async function geocodificarOrigem(
     'boundary.country',
     'BR'
   );
-
-
-  /*
-  Dá preferência para resultados
-  próximos ao hotel escolhido.
-  */
-
-  url.searchParams.set(
-    'focus.point.lon',
-    destinoCoords[0]
-  );
-
-
-  url.searchParams.set(
-    'focus.point.lat',
-    destinoCoords[1]
-  );
-
 
   const resposta =
     await fetch(
@@ -302,62 +221,14 @@ async function geocodificarOrigem(
   }
 
 
-  /*
-  Escolhe o resultado geográfico
-  mais próximo do hotel.
-  */
-
-  let melhor =
+  const melhor =
     resultados[0];
-
-
-  let menorDistancia =
-    distanciaEntrePontos(
-      melhor.geometry.coordinates,
-      destinoCoords
-    );
-
-
-  for (
-    const resultado
-    of resultados
-  ) {
-
-    const distancia =
-      distanciaEntrePontos(
-        resultado.geometry.coordinates,
-        destinoCoords
-      );
-
-
-    if (
-      distancia <
-      menorDistancia
-    ) {
-
-      menorDistancia =
-        distancia;
-
-      melhor =
-        resultado;
-
-    }
-
-  }
 
 
   console.log(
     'Origem interpretada:',
     melhor.properties?.label
   );
-
-
-  console.log(
-    'Distância aproximada da origem ao destino:',
-    menorDistancia.toFixed(2),
-    'km'
-  );
-
 
   return {
 
@@ -543,11 +414,7 @@ app.post(
 
       const origem =
         await geocodificarOrigem(
-
-          origin.trim(),
-
-          destino.coordenadas
-
+          origin.trim()
         );
 
 
