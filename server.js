@@ -371,70 +371,118 @@ async function obterRota(
   destinoCoords
 ) {
 
-  const url =
-    new URL(
-      'https://api.openrouteservice.org/v2/directions/driving-car'
-    );
+  const urlOrs =
+    'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
 
-  url.searchParams.set(
-    'start',
-    `${origemCoords[0]},${origemCoords[1]}`
-  );
+  try {
 
-
-  url.searchParams.set(
-    'end',
-    `${destinoCoords[0]},${destinoCoords[1]}`
-  );
-
-
-  const resposta =
-    await fetch(
-      url,
-      {
-        headers: {
-          Authorization:
-            ORS_API_KEY,
-          Accept:
-            'application/geo+json'
+    const respostaOrs =
+      await fetch(
+        urlOrs,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: ORS_API_KEY,
+            Accept: 'application/geo+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            coordinates: [
+              origemCoords,
+              destinoCoords
+            ]
+          }),
+          signal: AbortSignal.timeout(12000)
         }
+      );
+
+    if (respostaOrs.ok) {
+
+      const dadosOrs =
+        await respostaOrs.json();
+
+      const resumoOrs =
+        dadosOrs
+          ?.features
+          ?.[0]
+          ?.properties
+          ?.summary;
+
+      if (resumoOrs) {
+
+        return {
+          distance: resumoOrs.distance,
+          duration: resumoOrs.duration
+        };
+
       }
-    );
 
+    }
 
-  if (!resposta.ok) {
+    else {
 
-    const detalhe =
-      await resposta.text();
+      console.error(
+        'OpenRouteService indisponível:',
+        respostaOrs.status,
+        await respostaOrs.text()
+      );
 
+    }
+
+  }
+
+  catch (erroOrs) {
 
     console.error(
-      'Erro rota:',
-      resposta.status,
-      detalhe
-    );
-
-
-    throw new Error(
-      `Falha ao calcular a rota (${resposta.status})`
+      'Falha no OpenRouteService:',
+      erroOrs.message
     );
 
   }
 
 
-  const dados =
-    await resposta.json();
+  /*
+  CONTINGÊNCIA:
+  se o serviço principal estiver indisponível,
+  calcula a mesma rota pela malha pública do OSRM.
+  */
 
+  const urlOsrm =
+    new URL(
+      'https://router.project-osrm.org/route/v1/driving/' +
+      `${origemCoords[0]},${origemCoords[1]};` +
+      `${destinoCoords[0]},${destinoCoords[1]}`
+    );
 
-  const resumo =
-    dados
-      ?.features
-      ?.[0]
-      ?.properties
-      ?.summary;
+  urlOsrm.searchParams.set('overview', 'false');
+  urlOsrm.searchParams.set('steps', 'false');
 
+  const respostaOsrm =
+    await fetch(
+      urlOsrm,
+      {
+        headers: {
+          Accept: 'application/json'
+        },
+        signal: AbortSignal.timeout(12000)
+      }
+    );
 
-  if (!resumo) {
+  if (!respostaOsrm.ok) {
+
+    throw new Error(
+      `Falha ao calcular a rota (${respostaOsrm.status})`
+    );
+
+  }
+
+  const dadosOsrm =
+    await respostaOsrm.json();
+
+  const rotaOsrm =
+    dadosOsrm?.routes?.[0];
+
+  if (!rotaOsrm) {
 
     throw new Error(
       'Não foi possível obter distância e duração.'
@@ -442,15 +490,9 @@ async function obterRota(
 
   }
 
-
   return {
-
-    distance:
-      resumo.distance,
-
-    duration:
-      resumo.duration
-
+    distance: rotaOsrm.distance,
+    duration: rotaOsrm.duration
   };
 
 }
