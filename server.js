@@ -373,15 +373,8 @@ async function obterRota(
 
   const url =
     new URL(
-      'https://api.heigit.org/openrouteservice/v2/directions/driving-car'
+      'https://api.openrouteservice.org/v2/directions/driving-car'
     );
-
-
-  url.searchParams.set(
-    'api_key',
-    ORS_API_KEY
-  );
-
 
   url.searchParams.set(
     'start',
@@ -400,6 +393,8 @@ async function obterRota(
       url,
       {
         headers: {
+          Authorization:
+            ORS_API_KEY,
           Accept:
             'application/geo+json'
         }
